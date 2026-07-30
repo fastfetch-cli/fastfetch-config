@@ -1,4 +1,4 @@
-<script setup lang="ts">
+<script vapor lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { parse, printParseErrorCode, type ParseError } from 'jsonc-parser';
 import SidebarPanel from './components/SidebarPanel.vue';

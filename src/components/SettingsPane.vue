@@ -1,4 +1,4 @@
-<script setup lang="ts">
+<script vapor lang="ts">
 import { computed, ref, watch } from 'vue';
 import SchemaField from './SchemaField.vue';
 import MarkdownDescription from './MarkdownDescription.vue';

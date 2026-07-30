@@ -1,4 +1,4 @@
-<script setup lang="ts">
+<script vapor lang="ts">
 import { computed } from 'vue';
 import { marked } from 'marked';
 

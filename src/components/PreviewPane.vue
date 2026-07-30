@@ -1,4 +1,4 @@
-<script setup lang="ts">
+<script vapor lang="ts">
 import { computed } from 'vue';
 
 const props = defineProps<{

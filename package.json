@@ -1,7 +1,7 @@
 {
   "name": "fastfetch.config",
-  "private": true,
-  "version": "0.0.0",
+  "license": "MIT",
+  "version": "0.1.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -13,7 +13,7 @@
   "dependencies": {
     "jsonc-parser": "^3.3.1",
     "marked": "^18.0.7",
-    "vue": "^3.5.40"
+    "vue": "3.6.0-rc.2"
   },
   "devDependencies": {
     "@types/node": "^24.13.3",
