@@ -1,37 +1,37 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed } from 'vue';
 
 const props = defineProps<{
-  configJson: string
-  error: string
-  status: string
-}>()
+  configJson: string;
+  error: string;
+  status: string;
+}>();
 
 const emit = defineEmits<{
-  'toggleCollapse': []
-}>()
+  toggleCollapse: [];
+}>();
 
 const highlightedPreviewLines = computed(() =>
-  props.configJson
-    .split('\n')
-    .map((line) => highlightJsonc(line)),
-)
+  props.configJson.split('\n').map((line) => highlightJsonc(line)),
+);
 
 function escapeHtml(value: string) {
-  return value.replace(/[&<>"]/g, (character) =>
-    ({
-      '&': '&amp;',
-      '<': '&lt;',
-      '>': '&gt;',
-      '"': '&quot;',
-    })[character] ?? character,
-  )
+  return value.replace(
+    /[&<>"]/g,
+    (character) =>
+      ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+      })[character] ?? character,
+  );
 }
 
 function highlightJsonc(line: string) {
-  const escaped = escapeHtml(line)
+  const escaped = escapeHtml(line);
   const tokenPattern =
-    /("(?:\\.|[^"\\])*")(?=\s*:)|("(?:\\.|[^"\\])*")|\b(true|false|null)\b|(?<![\w."])(-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)|([{}\[\],:])/g
+    /("(?:\\.|[^"\\])*")(?=\s*:)|("(?:\\.|[^"\\])*")|\b(true|false|null)\b|(?<![\w."])(-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)|([{}\[\],:])/g;
   return escaped.replace(
     tokenPattern,
     (token, property, string, literal, number, punctuation) => {
@@ -45,10 +45,10 @@ function highlightJsonc(line: string) {
               ? 'token-number'
               : punctuation
                 ? 'token-punctuation'
-                : ''
-      return `<span class="${tokenClass}">${token}</span>`
+                : '';
+      return `<span class="${tokenClass}">${token}</span>`;
     },
-  )
+  );
 }
 </script>
 
@@ -58,7 +58,14 @@ function highlightJsonc(line: string) {
       <span>JSON PREVIEW</span>
       <div class="preview-heading-actions">
         <span class="saved-dot">● {{ error ? 'Error' : 'Ready' }}</span>
-        <button class="preview-toggle" type="button" title="Close preview" @click="emit('toggleCollapse')">×</button>
+        <button
+          class="preview-toggle"
+          type="button"
+          title="Close preview"
+          @click="emit('toggleCollapse')"
+        >
+          ×
+        </button>
       </div>
     </div>
     <ol class="code-preview" aria-label="Generated config.jsonc preview">

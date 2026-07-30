@@ -1,38 +1,44 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed } from 'vue';
 
 const props = defineProps<{
-  activeSection: string
-  search: string
-  sections: { id: string; label: string; icon: string }[]
-  schemaUrl: string
-  collapsed: boolean
-}>()
+  activeSection: string;
+  search: string;
+  sections: { id: string; label: string; icon: string }[];
+  schemaUrl: string;
+  collapsed: boolean;
+}>();
 
 const emit = defineEmits<{
-  'update:activeSection': [id: string]
-  'update:search': [value: string]
-  'toggleCollapse': []
-}>()
+  'update:activeSection': [id: string];
+  'update:search': [value: string];
+  toggleCollapse: [];
+}>();
 
 const searchModel = computed({
   get: () => props.search,
   set: (val) => emit('update:search', val),
-})
+});
 </script>
 
 <template>
   <aside class="sidebar" :class="{ collapsed }">
     <div v-if="!collapsed" class="search-box">
       <span>⌕</span>
-      <input v-model="searchModel" type="search" placeholder="Search settings" />
+      <input
+        v-model="searchModel"
+        type="search"
+        placeholder="Search settings"
+      />
     </div>
     <button
       class="collapse-toggle"
       type="button"
       :title="collapsed ? 'Expand sidebar' : 'Collapse sidebar'"
       @click="emit('toggleCollapse')"
-    >{{ collapsed ? '▸' : '◂' }}</button>
+    >
+      {{ collapsed ? '▸' : '◂' }}
+    </button>
     <nav aria-label="Settings sections">
       <button
         v-for="section in sections"
@@ -49,7 +55,9 @@ const searchModel = computed({
     </nav>
     <p v-if="!collapsed" class="source-note">
       Schema source<br />
-      <a :href="schemaUrl" target="_blank" rel="noreferrer">fastfetch-cli/fastfetch</a>
+      <a :href="schemaUrl" target="_blank" rel="noreferrer"
+        >fastfetch-cli/fastfetch</a
+      >
     </p>
   </aside>
 </template>
@@ -67,7 +75,9 @@ const searchModel = computed({
     padding: 16px 4px;
     align-items: center;
 
-    nav { width: 100%; }
+    nav {
+      width: 100%;
+    }
   }
 
   nav {

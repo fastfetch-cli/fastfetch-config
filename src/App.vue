@@ -1,31 +1,31 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref, watch } from "vue";
-import { parse, printParseErrorCode, type ParseError } from "jsonc-parser";
-import SidebarPanel from "./components/SidebarPanel.vue";
-import SettingsPane from "./components/SettingsPane.vue";
-import PreviewPane from "./components/PreviewPane.vue";
+import { computed, onMounted, reactive, ref, watch } from 'vue';
+import { parse, printParseErrorCode, type ParseError } from 'jsonc-parser';
+import SidebarPanel from './components/SidebarPanel.vue';
+import SettingsPane from './components/SettingsPane.vue';
+import PreviewPane from './components/PreviewPane.vue';
 
 type Config = Record<string, any>;
 
-const STORAGE_KEY = "fastfetch-config-editor-config";
+const STORAGE_KEY = 'fastfetch-config-editor-config';
 
 const schemaUrl =
-  "https://raw.githubusercontent.com/fastfetch-cli/fastfetch/refs/heads/dev/doc/json_schema.json";
+  'https://raw.githubusercontent.com/fastfetch-cli/fastfetch/refs/heads/dev/doc/json_schema.json';
 const schema = ref<Record<string, any> | null>(null);
-const activeSection = ref("general");
+const activeSection = ref('general');
 const config = reactive<Config>(loadSavedConfig());
-const search = ref("");
+const search = ref('');
 const sidebarCollapsed = ref(false);
 const previewCollapsed = ref(false);
-const status = ref("Loading the latest Fastfetch schema…");
-const error = ref("");
+const status = ref('Loading the latest Fastfetch schema…');
+const error = ref('');
 const fileInput = ref<HTMLInputElement | null>(null);
 
 const sections = [
-  { id: "general", label: "General", icon: "⚙" },
-  { id: "display", label: "Display", icon: "◫" },
-  { id: "logo", label: "Logo", icon: "◇" },
-  { id: "modules", label: "Modules", icon: "☷" },
+  { id: 'general', label: 'General', icon: '⚙' },
+  { id: 'display', label: 'Display', icon: '◫' },
+  { id: 'logo', label: 'Logo', icon: '◇' },
+  { id: 'modules', label: 'Modules', icon: '☷' },
 ];
 
 const preview = computed(() => JSON.stringify(config, null, 2));
@@ -35,10 +35,10 @@ function loadSavedConfig(): Config {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
       const blob = JSON.parse(saved);
-      if (blob && typeof blob === "object" && "config" in blob) {
+      if (blob && typeof blob === 'object' && 'config' in blob) {
         if (blob.activeSection) activeSection.value = blob.activeSection;
         const parsed = blob.config;
-        if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
           if (!parsed.$schema) parsed.$schema = schemaUrl;
           return parsed;
         }
@@ -74,7 +74,7 @@ async function readConfig(event: Event) {
   if (
     errors.length ||
     !parsed ||
-    typeof parsed !== "object" ||
+    typeof parsed !== 'object' ||
     Array.isArray(parsed)
   ) {
     error.value = errors.length
@@ -85,59 +85,59 @@ async function readConfig(event: Event) {
   Object.keys(config).forEach((key) => delete config[key]);
   Object.assign(config, parsed);
   if (!config.$schema) config.$schema = schemaUrl;
-  error.value = "";
+  error.value = '';
   status.value = `Imported ${file.name}`;
-  (event.target as HTMLInputElement).value = "";
+  (event.target as HTMLInputElement).value = '';
 }
 
 function newConfig() {
   Object.keys(config).forEach((key) => delete config[key]);
   config.$schema = schemaUrl;
   config.modules = [
-    "title",
-    "separator",
-    "os",
-    "host",
-    "kernel",
-    "uptime",
-    "packages",
-    "shell",
-    "display",
-    "de",
-    "wm",
-    "wmtheme",
-    "theme",
-    "icons",
-    "font",
-    "cursor",
-    "terminal",
-    "terminalfont",
-    "cpu",
-    "gpu",
-    "memory",
-    "swap",
-    "disk",
-    "localip",
-    "battery",
-    "poweradapter",
-    "locale",
-    "break",
-    "colors",
+    'title',
+    'separator',
+    'os',
+    'host',
+    'kernel',
+    'uptime',
+    'packages',
+    'shell',
+    'display',
+    'de',
+    'wm',
+    'wmtheme',
+    'theme',
+    'icons',
+    'font',
+    'cursor',
+    'terminal',
+    'terminalfont',
+    'cpu',
+    'gpu',
+    'memory',
+    'swap',
+    'disk',
+    'localip',
+    'battery',
+    'poweradapter',
+    'locale',
+    'break',
+    'colors',
   ];
-  error.value = "";
-  status.value = "Started a new configuration";
+  error.value = '';
+  status.value = 'Started a new configuration';
 }
 
 function downloadConfig() {
   const contents = `// Generated with Fastfetch Config Editor\n${preview.value}\n`;
-  const blob = new Blob([contents], { type: "application/json" });
+  const blob = new Blob([contents], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
-  const anchor = document.createElement("a");
+  const anchor = document.createElement('a');
   anchor.href = url;
-  anchor.download = "config.jsonc";
+  anchor.download = 'config.jsonc';
   anchor.click();
   URL.revokeObjectURL(url);
-  status.value = "Downloaded config.jsonc";
+  status.value = 'Downloaded config.jsonc';
 }
 
 function onUpdateConfigSection(key: string, value: unknown) {
@@ -153,9 +153,9 @@ onMounted(async () => {
     const response = await fetch(schemaUrl);
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     schema.value = await response.json();
-    status.value = "Schema loaded from fastfetch-cli/fastfetch · dev";
+    status.value = 'Schema loaded from fastfetch-cli/fastfetch · dev';
   } catch (reason) {
-    error.value = `Unable to load the remote schema (${reason instanceof Error ? reason.message : "unknown error"}). Check your network connection and try again.`;
+    error.value = `Unable to load the remote schema (${reason instanceof Error ? reason.message : 'unknown error'}). Check your network connection and try again.`;
   }
 });
 </script>

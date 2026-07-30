@@ -1,137 +1,146 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
-import SchemaField from './SchemaField.vue'
-import MarkdownDescription from './MarkdownDescription.vue'
+import { computed, ref, watch } from 'vue';
+import SchemaField from './SchemaField.vue';
+import MarkdownDescription from './MarkdownDescription.vue';
 
-type Schema = Record<string, any>
-type Config = Record<string, any>
+type Schema = Record<string, any>;
+type Config = Record<string, any>;
 
 const props = defineProps<{
-  schema: Schema
-  config: Config
-  activeSection: string
-  sections: { id: string; label: string; icon: string }[]
-  search: string
-}>()
+  schema: Schema;
+  config: Config;
+  activeSection: string;
+  sections: { id: string; label: string; icon: string }[];
+  search: string;
+}>();
 
 const emit = defineEmits<{
-  'update:configSection': [key: string, value: unknown]
-  'remove:configSection': [key: string]
-}>()
+  'update:configSection': [key: string, value: unknown];
+  'remove:configSection': [key: string];
+}>();
 
 /* ── derived schema ─────────────────────────────────────────── */
 
-const sectionSchema = computed(() => props.schema.properties?.[props.activeSection] ?? {})
+const sectionSchema = computed(
+  () => props.schema.properties?.[props.activeSection] ?? {},
+);
 
 /* ── module management ──────────────────────────────────────── */
 
-const selectedModuleType = ref('title')
-const collapsedModules = ref(new Set<number>())
-const accordionMode = ref(false)
+const selectedModuleType = ref('title');
+const collapsedModules = ref(new Set<number>());
+const accordionMode = ref(false);
 
 watch(accordionMode, (val) => {
-  const modules = props.config.modules
-  if (!modules?.length) return
-  const next = new Set<number>()
+  const modules = props.config.modules;
+  if (!modules?.length) return;
+  const next = new Set<number>();
   if (val) {
     // 开启手风琴 → 全部收起
-    for (let i = 0; i < modules.length; i++) next.add(i)
+    for (let i = 0; i < modules.length; i++) next.add(i);
   }
   // 关闭手风琴 → 全部展开 (Set 为空)
-  collapsedModules.value = next
-})
+  collapsedModules.value = next;
+});
 
 const moduleOptions = computed<Schema[]>(() => {
-  const itemSchema = props.schema.properties?.modules?.items
-  const objectChoice = itemSchema?.anyOf?.find((choice: Schema) => choice.type === 'object')
-  return objectChoice?.oneOf ?? []
-})
+  const itemSchema = props.schema.properties?.modules?.items;
+  const objectChoice = itemSchema?.anyOf?.find(
+    (choice: Schema) => choice.type === 'object',
+  );
+  return objectChoice?.oneOf ?? [];
+});
 
 const filteredModuleOptions = computed(() =>
   moduleOptions.value.filter((option) => {
-    const label = String(option.title ?? option.properties?.type?.const ?? '')
-    return label.toLowerCase().includes(props.search.toLowerCase())
+    const label = String(option.title ?? option.properties?.type?.const ?? '');
+    return label.toLowerCase().includes(props.search.toLowerCase());
   }),
-)
+);
 
 function schemaForModule(module: Config): Schema {
   const matching = moduleOptions.value.find(
     (option) => option.properties?.type?.const === module.type,
-  )
-  if (!matching) return { type: 'object', properties: {} }
-  const { type: _type, ...properties } = matching.properties ?? {}
-  return { ...matching, properties }
+  );
+  if (!matching) return { type: 'object', properties: {} };
+  const { type: _type, ...properties } = matching.properties ?? {};
+  return { ...matching, properties };
 }
 
 function moduleTitle(module: unknown) {
-  if (typeof module === 'string') return module
-  const type = (module as Config).type
+  if (typeof module === 'string') return module;
+  const type = (module as Config).type;
   return (
-    moduleOptions.value.find((option) => option.properties?.type?.const === type)?.title ?? type
-  )
+    moduleOptions.value.find(
+      (option) => option.properties?.type?.const === type,
+    )?.title ?? type
+  );
 }
 
 function addModule() {
-  if (!props.config.modules) props.config.modules = []
-  props.config.modules.push({ type: selectedModuleType.value })
+  if (!props.config.modules) props.config.modules = [];
+  props.config.modules.push({ type: selectedModuleType.value });
 }
 
 function isModuleCollapsed(index: number) {
-  return collapsedModules.value.has(index)
+  return collapsedModules.value.has(index);
 }
 
 function toggleModule(index: number) {
-  const next = new Set(collapsedModules.value)
+  const next = new Set(collapsedModules.value);
   if (next.has(index)) {
-    next.delete(index)
+    next.delete(index);
     if (accordionMode.value) {
-      const modules = props.config.modules ?? []
+      const modules = props.config.modules ?? [];
       for (let i = 0; i < modules.length; i++) {
-        if (i !== index) next.add(i)
+        if (i !== index) next.add(i);
       }
     }
   } else {
-    next.add(index)
+    next.add(index);
   }
-  collapsedModules.value = next
+  collapsedModules.value = next;
 }
 
 function updateModule(index: number, value: Config) {
-  props.config.modules[index] = { type: props.config.modules[index].type, ...value }
+  props.config.modules[index] = {
+    type: props.config.modules[index].type,
+    ...value,
+  };
 }
 
 function removeModule(index: number) {
-  props.config.modules.splice(index, 1)
+  props.config.modules.splice(index, 1);
 }
 
 function moveModule(index: number, direction: number) {
-  const destination = index + direction
-  if (destination < 0 || destination >= props.config.modules.length) return
-  const [mod] = props.config.modules.splice(index, 1)
-  props.config.modules.splice(destination, 0, mod)
+  const destination = index + direction;
+  if (destination < 0 || destination >= props.config.modules.length) return;
+  const [mod] = props.config.modules.splice(index, 1);
+  props.config.modules.splice(destination, 0, mod);
 }
 
 function convertModule(index: number) {
-  props.config.modules[index] = { type: props.config.modules[index] }
+  props.config.modules[index] = { type: props.config.modules[index] };
 }
 
 function simplifyModule(index: number) {
-  props.config.modules[index] = props.config.modules[index].type
+  props.config.modules[index] = props.config.modules[index].type;
 }
 
 function isModuleSimple(module: Config) {
-  const keys = Object.keys(module)
-  return keys.length === 1 && keys[0] === 'type'
+  const keys = Object.keys(module);
+  return keys.length === 1 && keys[0] === 'type';
 }
 
 /* ── section helpers ────────────────────────────────────────── */
 
 function setSection(value: unknown) {
-  emit('update:configSection', props.activeSection, value)
+  emit('update:configSection', props.activeSection, value);
 }
 
 function removeSection() {
-  emit('remove:configSection', props.activeSection)
+  emit('remove:configSection', props.activeSection);
 }
 </script>
 
@@ -149,7 +158,9 @@ function removeSection() {
         </div>
       </div>
       <button
-        v-if="config[activeSection] !== undefined && activeSection !== 'modules'"
+        v-if="
+          config[activeSection] !== undefined && activeSection !== 'modules'
+        "
         class="text-button danger"
         type="button"
         @click="removeSection"
@@ -169,7 +180,9 @@ function removeSection() {
             {{ option.title }}
           </option>
         </select>
-        <button class="primary-button" type="button" @click="addModule">Add module</button>
+        <button class="primary-button" type="button" @click="addModule">
+          Add module
+        </button>
         <label class="accordion-toggle">
           <input type="checkbox" v-model="accordionMode" />
           <span class="toggle-track"><span class="toggle-thumb"></span></span>
@@ -205,19 +218,39 @@ function removeSection() {
             <strong>{{ module }}</strong>
           </div>
           <div class="module-actions" @click.stop @keydown.stop>
-            <button type="button" title="Move up" @click="moveModule(index, -1)">↑</button>
-            <button type="button" title="Move down" @click="moveModule(index, 1)">↓</button>
-            <button type="button" title="Remove module" class="danger" @click="removeModule(index)">×</button>
+            <button
+              type="button"
+              title="Move up"
+              @click="moveModule(index, -1)"
+            >
+              ↑
+            </button>
+            <button
+              type="button"
+              title="Move down"
+              @click="moveModule(index, 1)"
+            >
+              ↓
+            </button>
+            <button
+              type="button"
+              title="Remove module"
+              class="danger"
+              @click="removeModule(index)"
+            >
+              ×
+            </button>
           </div>
         </header>
-        <div
-          :id="`module-details-${index}`"
-          v-show="!isModuleCollapsed(index)"
-        >
+        <div :id="`module-details-${index}`" v-show="!isModuleCollapsed(index)">
           <template v-if="typeof module === 'string'">
             <div class="simple-module">
               <span>Runs with Fastfetch defaults.</span>
-              <button class="secondary-button" type="button" @click="convertModule(index)">
+              <button
+                class="secondary-button"
+                type="button"
+                @click="convertModule(index)"
+              >
                 Customize
               </button>
             </div>
@@ -231,7 +264,13 @@ function removeSection() {
           />
           <div v-if="isModuleSimple(module)" class="simplify-hint">
             <span>No custom settings — </span>
-            <button class="text-button" type="button" @click="simplifyModule(index)">convert to string</button>
+            <button
+              class="text-button"
+              type="button"
+              @click="simplifyModule(index)"
+            >
+              convert to string
+            </button>
           </div>
         </div>
       </article>
@@ -239,7 +278,8 @@ function removeSection() {
 
     <template v-else>
       <p v-if="config[activeSection] === undefined" class="empty-state">
-        This section is not configured yet. Add it to expose its available settings.
+        This section is not configured yet. Add it to expose its available
+        settings.
       </p>
       <button
         v-if="config[activeSection] === undefined"
@@ -247,7 +287,8 @@ function removeSection() {
         type="button"
         @click="setSection({})"
       >
-        Add {{ sections.find((item) => item.id === activeSection)?.label }} section
+        Add
+        {{ sections.find((item) => item.id === activeSection)?.label }} section
       </button>
       <SchemaField
         v-else
@@ -373,7 +414,7 @@ function removeSection() {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 6px;
-  box-shadow: 0 1px 3px rgba(0,0,0,.06);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
 
   > header {
     display: flex;
@@ -397,12 +438,12 @@ function removeSection() {
         width: 14px;
         color: var(--subtle);
         font-size: 9px;
-        content: "▼";
+        content: '▼';
       }
     }
 
-    &[aria-expanded="false"] > div:first-child::before {
-      content: "▶";
+    &[aria-expanded='false'] > div:first-child::before {
+      content: '▶';
     }
 
     > div:first-child,

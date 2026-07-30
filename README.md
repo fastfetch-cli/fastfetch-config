@@ -29,14 +29,14 @@ Fastfetch is a cross-platform system information tool. Its configuration file us
 
 ## Tech Stack
 
-| Category         | Tools                                                            |
-| ---------------- | ---------------------------------------------------------------- |
-| Framework        | Vue 3 (`<script setup>` + TypeScript)                            |
-| Build tool       | Vite 8                                                           |
-| Language         | TypeScript ~6.0                                                  |
-| Styling          | SCSS / Sass                                                      |
-| Key dependencies | `jsonc-parser` (JSONC parsing), `marked` (Markdown rendering)    |
-| Type checking    | vue-tsc                                                          |
+| Category         | Tools                                                         |
+| ---------------- | ------------------------------------------------------------- |
+| Framework        | Vue 3 (`<script setup>` + TypeScript)                         |
+| Build tool       | Vite 8                                                        |
+| Language         | TypeScript ~6.0                                               |
+| Styling          | SCSS / Sass                                                   |
+| Key dependencies | `jsonc-parser` (JSONC parsing), `marked` (Markdown rendering) |
+| Type checking    | vue-tsc                                                       |
 
 ## Getting Started
 
@@ -84,15 +84,15 @@ flowchart LR
 
 `SchemaField.vue` is the heart of the editor. It accepts any JSON Schema node and maps its `type` and structural features to the appropriate form control:
 
-| Schema trait                       | Rendered control                                      |
-| ---------------------------------- | ----------------------------------------------------- |
-| `oneOf` / `anyOf` (no `const`)     | Variant picker — switches the entire sub-form         |
-| `type: "object"` or `properties`   | Collapsible property list with add/remove support     |
-| `type: "array"`                    | Array editor with add/remove, each item recursed      |
-| `enum`                             | Select box                                            |
-| `type: "boolean"`                  | Toggle switch                                         |
-| `type: "number"` / `"integer"`     | Numeric input                                         |
-| Everything else                    | Text input                                            |
+| Schema trait                     | Rendered control                                  |
+| -------------------------------- | ------------------------------------------------- |
+| `oneOf` / `anyOf` (no `const`)   | Variant picker — switches the entire sub-form     |
+| `type: "object"` or `properties` | Collapsible property list with add/remove support |
+| `type: "array"`                  | Array editor with add/remove, each item recursed  |
+| `enum`                           | Select box                                        |
+| `type: "boolean"`                | Toggle switch                                     |
+| `type: "number"` / `"integer"`   | Numeric input                                     |
+| Everything else                  | Text input                                        |
 
 Key design decisions:
 
@@ -112,11 +112,11 @@ Fastfetch's `modules` array is the most complex part of the configuration: each 
 
 ### 4. Configuration Lifecycle
 
-| Phase   | Implementation                                                              |
-| ------- | --------------------------------------------------------------------------- |
-| **New** | Resets the reactive config, preserving only the `$schema` reference         |
-| **Import** | Uses `jsonc-parser` to parse the selected `.jsonc` file, merging into the current config |
-| **Edit** | SchemaField binds bidirectionally to the reactive config object — changes appear instantly |
+| Phase      | Implementation                                                                                                                       |
+| ---------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| **New**    | Resets the reactive config, preserving only the `$schema` reference                                                                  |
+| **Import** | Uses `jsonc-parser` to parse the selected `.jsonc` file, merging into the current config                                             |
+| **Edit**   | SchemaField binds bidirectionally to the reactive config object — changes appear instantly                                           |
 | **Export** | Serialises the config with `JSON.stringify`, wraps it in a JSONC template (with `// Generated` header), and triggers a Blob download |
 
 ## License

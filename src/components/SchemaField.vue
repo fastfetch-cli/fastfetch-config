@@ -1,133 +1,173 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
-import MarkdownDescription from './MarkdownDescription.vue'
+import { computed, ref } from 'vue';
+import MarkdownDescription from './MarkdownDescription.vue';
 
-type Schema = Record<string, any>
+type Schema = Record<string, any>;
 
 const props = defineProps<{
-  schema: Schema
-  rootSchema: Schema
-  modelValue: any
-  label?: string
-  depth?: number
-}>()
+  schema: Schema;
+  rootSchema: Schema;
+  modelValue: any;
+  label?: string;
+  depth?: number;
+}>();
 
-const emit = defineEmits<{ 'update:modelValue': [value: any] }>()
+const emit = defineEmits<{ 'update:modelValue': [value: any] }>();
 
-const resolved = computed<Schema>(() => resolve(props.schema))
-const level = computed(() => props.depth ?? 0)
-const isObject = computed(() => resolved.value.type === 'object' || Boolean(resolved.value.properties))
-const isArray = computed(() => resolved.value.type === 'array')
-const enumOptions = computed(() => getOptions(resolved.value))
-const collapsed = ref(false)
-const collapsedProperties = ref(new Set<string>())
-const variantOptions = computed(() => (resolved.value.oneOf ?? resolved.value.anyOf ?? [])
-  .filter((branch: Schema) => !Object.hasOwn(branch, 'const') || branch.const === null))
+const resolved = computed<Schema>(() => resolve(props.schema));
+const level = computed(() => props.depth ?? 0);
+const isObject = computed(
+  () => resolved.value.type === 'object' || Boolean(resolved.value.properties),
+);
+const isArray = computed(() => resolved.value.type === 'array');
+const enumOptions = computed(() => getOptions(resolved.value));
+const collapsed = ref(false);
+const collapsedProperties = ref(new Set<string>());
+const variantOptions = computed(() =>
+  (resolved.value.oneOf ?? resolved.value.anyOf ?? []).filter(
+    (branch: Schema) =>
+      !Object.hasOwn(branch, 'const') || branch.const === null,
+  ),
+);
 const selectedVariant = computed(() => {
-  const index = variantOptions.value.findIndex((branch) => matchesValue(resolve(branch), props.modelValue))
-  return index < 0 ? 0 : index
-})
-const visibleProperties = computed(() => (Object.entries(resolved.value.properties ?? {}) as [string, Schema][]).filter(([key]) => key in (props.modelValue ?? {})))
-const availableProperties = computed(() => (Object.entries(resolved.value.properties ?? {}) as [string, Schema][]).filter(([key]) => !(key in (props.modelValue ?? {}))))
+  const index = variantOptions.value.findIndex((branch) =>
+    matchesValue(resolve(branch), props.modelValue),
+  );
+  return index < 0 ? 0 : index;
+});
+const visibleProperties = computed(() =>
+  (
+    Object.entries(resolved.value.properties ?? {}) as [string, Schema][]
+  ).filter(([key]) => key in (props.modelValue ?? {})),
+);
+const availableProperties = computed(() =>
+  (
+    Object.entries(resolved.value.properties ?? {}) as [string, Schema][]
+  ).filter(([key]) => !(key in (props.modelValue ?? {}))),
+);
 
 function resolve(schema: Schema): Schema {
-  if (!schema?.$ref) return schema ?? {}
-  const path = String(schema.$ref).replace('#/', '').split('/')
-  return path.reduce((value, key) => value?.[key], props.rootSchema) ?? schema
+  if (!schema?.$ref) return schema ?? {};
+  const path = String(schema.$ref).replace('#/', '').split('/');
+  return path.reduce((value, key) => value?.[key], props.rootSchema) ?? schema;
 }
 
 function getOptions(schema: Schema) {
-  if (schema.enum) return schema.enum.map((value: unknown) => ({ value, label: String(value) }))
-  const branches = schema.oneOf ?? schema.anyOf
-  if (!branches) return []
+  if (schema.enum)
+    return schema.enum.map((value: unknown) => ({
+      value,
+      label: String(value),
+    }));
+  const branches = schema.oneOf ?? schema.anyOf;
+  if (!branches) return [];
   return branches
-    .filter((branch: Schema) => Object.hasOwn(branch, 'const') && branch.const !== null)
-    .map((branch: Schema) => ({ value: branch.const, label: branch.description ?? String(branch.const) }))
+    .filter(
+      (branch: Schema) =>
+        Object.hasOwn(branch, 'const') && branch.const !== null,
+    )
+    .map((branch: Schema) => ({
+      value: branch.const,
+      label: branch.description ?? String(branch.const),
+    }));
 }
 
 function matchesValue(schema: Schema, value: unknown) {
-  if (value === null) return schema.type === 'null' || schema.const === null
-  if (Array.isArray(value)) return schema.type === 'array'
-  if (typeof value === 'object') return schema.type === 'object' || Boolean(schema.properties)
-  return schema.type === typeof value || (!schema.type && !schema.properties)
+  if (value === null) return schema.type === 'null' || schema.const === null;
+  if (Array.isArray(value)) return schema.type === 'array';
+  if (typeof value === 'object')
+    return schema.type === 'object' || Boolean(schema.properties);
+  return schema.type === typeof value || (!schema.type && !schema.properties);
 }
 
 function isObjectSchema(schema: Schema) {
-  const value = resolve(schema)
-  return value.type === 'object' || Boolean(value.properties)
+  const value = resolve(schema);
+  return value.type === 'object' || Boolean(value.properties);
 }
 
 function isPropertyCollapsed(key: string) {
-  return collapsedProperties.value.has(key)
+  return collapsedProperties.value.has(key);
 }
 
 function toggleProperty(key: string) {
-  const next = new Set(collapsedProperties.value)
-  if (next.has(key)) next.delete(key)
-  else next.add(key)
-  collapsedProperties.value = next
+  const next = new Set(collapsedProperties.value);
+  if (next.has(key)) next.delete(key);
+  else next.add(key);
+  collapsedProperties.value = next;
 }
 
 function defaultValue(schema: Schema): any {
-  const value = resolve(schema)
-  if (Object.hasOwn(value, 'default')) return JSON.parse(JSON.stringify(value.default))
-  if (Object.hasOwn(value, 'const')) return JSON.parse(JSON.stringify(value.const))
-  const options = getOptions(value)
-  if (options.length) return options[0].value
-  if (value.type === 'boolean') return false
-  if (value.type === 'null') return null
-  if (value.type === 'number' || value.type === 'integer') return value.minimum ?? 0
-  if (value.type === 'array') return []
-  if (value.type === 'object' || value.properties) return {}
-  return ''
+  const value = resolve(schema);
+  if (Object.hasOwn(value, 'default'))
+    return JSON.parse(JSON.stringify(value.default));
+  if (Object.hasOwn(value, 'const'))
+    return JSON.parse(JSON.stringify(value.const));
+  const options = getOptions(value);
+  if (options.length) return options[0].value;
+  if (value.type === 'boolean') return false;
+  if (value.type === 'null') return null;
+  if (value.type === 'number' || value.type === 'integer')
+    return value.minimum ?? 0;
+  if (value.type === 'array') return [];
+  if (value.type === 'object' || value.properties) return {};
+  return '';
 }
 
 function updatePrimitive(event: Event) {
-  const target = event.target as HTMLInputElement | HTMLSelectElement
-  let value: any = target.value
-  if (resolved.value.type === 'number' || resolved.value.type === 'integer') value = value === '' ? undefined : Number(value)
-  emit('update:modelValue', value)
+  const target = event.target as HTMLInputElement | HTMLSelectElement;
+  let value: any = target.value;
+  if (resolved.value.type === 'number' || resolved.value.type === 'integer')
+    value = value === '' ? undefined : Number(value);
+  emit('update:modelValue', value);
 }
 
 function changeVariant(event: Event) {
-  const branch = variantOptions.value[Number((event.target as HTMLSelectElement).value)]
-  emit('update:modelValue', defaultValue(branch))
+  const branch =
+    variantOptions.value[Number((event.target as HTMLSelectElement).value)];
+  emit('update:modelValue', defaultValue(branch));
 }
 
 function updateBoolean(event: Event) {
-  emit('update:modelValue', (event.target as HTMLInputElement).checked)
+  emit('update:modelValue', (event.target as HTMLInputElement).checked);
 }
 
 function updateChild(key: string, value: any) {
-  emit('update:modelValue', { ...(props.modelValue ?? {}), [key]: value })
+  emit('update:modelValue', { ...(props.modelValue ?? {}), [key]: value });
 }
 
 function removeChild(key: string) {
-  const next = { ...(props.modelValue ?? {}) }
-  delete next[key]
-  emit('update:modelValue', next)
+  const next = { ...(props.modelValue ?? {}) };
+  delete next[key];
+  emit('update:modelValue', next);
 }
 
 function addChild(event: Event) {
-  const key = (event.target as HTMLSelectElement).value
-  if (!key) return
-  const childSchema = resolved.value.properties[key]
-  updateChild(key, defaultValue(childSchema))
-  ;(event.target as HTMLSelectElement).value = ''
+  const key = (event.target as HTMLSelectElement).value;
+  if (!key) return;
+  const childSchema = resolved.value.properties[key];
+  updateChild(key, defaultValue(childSchema));
+  (event.target as HTMLSelectElement).value = '';
 }
 
 function updateArrayItem(index: number, value: any) {
-  const next = [...(props.modelValue ?? [])]
-  next[index] = value
-  emit('update:modelValue', next)
+  const next = [...(props.modelValue ?? [])];
+  next[index] = value;
+  emit('update:modelValue', next);
 }
 
 function removeArrayItem(index: number) {
-  emit('update:modelValue', (props.modelValue ?? []).filter((_: unknown, itemIndex: number) => itemIndex !== index))
+  emit(
+    'update:modelValue',
+    (props.modelValue ?? []).filter(
+      (_: unknown, itemIndex: number) => itemIndex !== index,
+    ),
+  );
 }
 
 function addArrayItem() {
-  emit('update:modelValue', [...(props.modelValue ?? []), defaultValue(resolved.value.items ?? {})])
+  emit('update:modelValue', [
+    ...(props.modelValue ?? []),
+    defaultValue(resolved.value.items ?? {}),
+  ]);
 }
 </script>
 
@@ -136,9 +176,23 @@ function addArrayItem() {
     <template v-if="variantOptions.length">
       <div class="variant-picker">
         <label>Value type</label>
-        <select class="form-control" :value="selectedVariant" @change="changeVariant">
-          <option v-for="(variant, index) in variantOptions" :key="index" :value="index">
-            {{ resolve(variant).title ?? resolve(variant).type ?? 'Custom value' }}{{ resolve(variant).description ? ` — ${resolve(variant).description}` : '' }}
+        <select
+          class="form-control"
+          :value="selectedVariant"
+          @change="changeVariant"
+        >
+          <option
+            v-for="(variant, index) in variantOptions"
+            :key="index"
+            :value="index"
+          >
+            {{
+              resolve(variant).title ?? resolve(variant).type ?? 'Custom value'
+            }}{{
+              resolve(variant).description
+                ? ` — ${resolve(variant).description}`
+                : ''
+            }}
           </option>
         </select>
       </div>
@@ -154,21 +208,48 @@ function addArrayItem() {
     <template v-else-if="isObject">
       <div v-if="label" class="object-heading">
         <div>
-          <button class="object-toggle" type="button" :aria-expanded="!collapsed" @click="collapsed = !collapsed">
+          <button
+            class="object-toggle"
+            type="button"
+            :aria-expanded="!collapsed"
+            @click="collapsed = !collapsed"
+          >
             <strong>{{ label }}</strong>
           </button>
-          <div v-if="resolved.description" class="description"><MarkdownDescription :source="resolved.description" /></div>
+          <div v-if="resolved.description" class="description">
+            <MarkdownDescription :source="resolved.description" />
+          </div>
         </div>
       </div>
 
-      <div v-if="visibleProperties.length && !collapsed" class="object-properties">
-        <div v-for="[key, childSchema] in visibleProperties" :key="key" class="property-row">
+      <div
+        v-if="visibleProperties.length && !collapsed"
+        class="object-properties"
+      >
+        <div
+          v-for="[key, childSchema] in visibleProperties"
+          :key="key"
+          class="property-row"
+        >
           <div class="property-meta">
-            <button v-if="isObjectSchema(childSchema)" class="object-toggle" type="button" :aria-expanded="!isPropertyCollapsed(key)" @click="toggleProperty(key)">
+            <button
+              v-if="isObjectSchema(childSchema)"
+              class="object-toggle"
+              type="button"
+              :aria-expanded="!isPropertyCollapsed(key)"
+              @click="toggleProperty(key)"
+            >
               <span class="property-key">{{ key }}</span>
             </button>
             <label v-else class="property-key">{{ key }}</label>
-            <div v-if="resolve(childSchema).description && !isPropertyCollapsed(key)" class="description"><MarkdownDescription :source="resolve(childSchema).description" /></div>
+            <div
+              v-if="
+                resolve(childSchema).description && !isPropertyCollapsed(key)
+              "
+              class="description"
+            >
+              <MarkdownDescription :source="resolve(childSchema).description" />
+            </div>
           </div>
           <div v-show="!isPropertyCollapsed(key)" class="property-control">
             <SchemaField
@@ -179,16 +260,36 @@ function addArrayItem() {
               @update:model-value="updateChild(key, $event)"
             />
           </div>
-          <button class="icon-button remove" type="button" :aria-label="`Remove ${key}`" @click="removeChild(key)">×</button>
+          <button
+            class="icon-button remove"
+            type="button"
+            :aria-label="`Remove ${key}`"
+            @click="removeChild(key)"
+          >
+            ×
+          </button>
         </div>
       </div>
 
-      <label v-show="!collapsed" v-if="availableProperties.length" class="add-property">
+      <label
+        v-show="!collapsed"
+        v-if="availableProperties.length"
+        class="add-property"
+      >
         <span>＋</span>
         <select aria-label="Add setting" @change="addChild">
           <option value="">Add setting…</option>
-          <option v-for="[key, childSchema] in availableProperties" :key="key" :value="key">
-            {{ key }}{{ resolve(childSchema).description ? ` — ${resolve(childSchema).description}` : '' }}
+          <option
+            v-for="[key, childSchema] in availableProperties"
+            :key="key"
+            :value="key"
+          >
+            {{ key
+            }}{{
+              resolve(childSchema).description
+                ? ` — ${resolve(childSchema).description}`
+                : ''
+            }}
           </option>
         </select>
       </label>
@@ -196,7 +297,11 @@ function addArrayItem() {
 
     <template v-else-if="isArray">
       <div class="array-editor">
-        <div v-for="(item, index) in (modelValue as any[] ?? [])" :key="index" class="array-item">
+        <div
+          v-for="(item, index) in (modelValue as any[]) ?? []"
+          :key="index"
+          class="array-item"
+        >
           <SchemaField
             :schema="resolved.items ?? {}"
             :root-schema="rootSchema"
@@ -204,29 +309,64 @@ function addArrayItem() {
             :depth="level + 1"
             @update:model-value="updateArrayItem(index, $event)"
           />
-          <button class="icon-button remove" type="button" aria-label="Remove item" @click="removeArrayItem(index)">×</button>
+          <button
+            class="icon-button remove"
+            type="button"
+            aria-label="Remove item"
+            @click="removeArrayItem(index)"
+          >
+            ×
+          </button>
         </div>
-        <button class="secondary-button" type="button" @click="addArrayItem">Add item</button>
+        <button class="secondary-button" type="button" @click="addArrayItem">
+          Add item
+        </button>
       </div>
     </template>
 
-    <select v-else-if="enumOptions.length" class="form-control" :value="modelValue" @change="updatePrimitive">
-      <option v-for="option in enumOptions" :key="String(option.value)" :value="option.value">{{ option.label }}</option>
+    <select
+      v-else-if="enumOptions.length"
+      class="form-control"
+      :value="modelValue"
+      @change="updatePrimitive"
+    >
+      <option
+        v-for="option in enumOptions"
+        :key="String(option.value)"
+        :value="option.value"
+      >
+        {{ option.label }}
+      </option>
     </select>
 
     <label v-else-if="resolved.type === 'boolean'" class="switch">
-      <input type="checkbox" :checked="Boolean(modelValue)" @change="updateBoolean" />
+      <input
+        type="checkbox"
+        :checked="Boolean(modelValue)"
+        @change="updateBoolean"
+      />
       <span aria-hidden="true"></span>
       <b>{{ modelValue ? 'On' : 'Off' }}</b>
     </label>
 
-    <span v-else-if="resolved.type === 'null' || resolved.const === null" class="null-indicator">null</span>
+    <span
+      v-else-if="resolved.type === 'null' || resolved.const === null"
+      class="null-indicator"
+      >null</span
+    >
 
     <input
       v-else
       class="form-control"
-      :class="{ 'text-control': resolved.type !== 'number' && resolved.type !== 'integer' }"
-      :type="resolved.type === 'number' || resolved.type === 'integer' ? 'number' : 'text'"
+      :class="{
+        'text-control':
+          resolved.type !== 'number' && resolved.type !== 'integer',
+      }"
+      :type="
+        resolved.type === 'number' || resolved.type === 'integer'
+          ? 'number'
+          : 'text'
+      "
       :min="resolved.minimum"
       :max="resolved.maximum"
       :step="resolved.type === 'integer' ? 1 : 'any'"
@@ -239,7 +379,9 @@ function addArrayItem() {
 <style scoped lang="scss">
 $mobile: 720px;
 
-.schema-field { min-width: 0; }
+.schema-field {
+  min-width: 0;
+}
 
 .object-heading {
   display: flex;
@@ -247,14 +389,46 @@ $mobile: 720px;
   min-height: 36px;
   margin: 0 0 10px;
 
-  .object-toggle { display: inline-flex; align-items: center; gap: 6px; min-width: 0; padding: 0; color: inherit; font: inherit; text-align: left; background: transparent; border: 0; cursor: pointer;
-    &::before { display: inline-block; width: 16px; color: var(--subtle); font-size: 10px; content: attr(aria-expanded) ; }
-    &[aria-expanded="false"]::before { content: "▶"; }
-    &[aria-expanded="true"]::before { content: "▼"; }
-    &:hover { color: var(--accent); }
+  .object-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+    padding: 0;
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    background: transparent;
+    border: 0;
+    cursor: pointer;
+    &::before {
+      display: inline-block;
+      width: 16px;
+      color: var(--subtle);
+      font-size: 10px;
+      content: attr(aria-expanded);
+    }
+    &[aria-expanded='false']::before {
+      content: '▶';
+    }
+    &[aria-expanded='true']::before {
+      content: '▼';
+    }
+    &:hover {
+      color: var(--accent);
+    }
   }
-  strong { color: var(--text); font-size: 13px; font-weight: 600; }
-  .description { margin: 3px 0 0; color: var(--muted); font-size: 12px; line-height: 1.5; }
+  strong {
+    color: var(--text);
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .description {
+    margin: 3px 0 0;
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 1.5;
+  }
 }
 
 .object-properties {
@@ -262,18 +436,20 @@ $mobile: 720px;
   background: var(--surface-raised);
   border: 1px solid var(--border);
   border-radius: 4px;
-  box-shadow: 0 1px 2px rgba(0,0,0,.04);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
 }
 
 .property-row {
   display: grid;
-  grid-template-columns: minmax(140px, .85fr) minmax(200px, 1.15fr) 28px;
+  grid-template-columns: minmax(140px, 0.85fr) minmax(200px, 1.15fr) 28px;
   align-items: start;
   gap: 12px;
   padding: 8px 12px;
   border-bottom: 1px solid var(--border);
 
-  &:last-child { border-bottom: 0; }
+  &:last-child {
+    border-bottom: 0;
+  }
 }
 
 .property-meta {
@@ -303,11 +479,11 @@ $mobile: 720px;
       width: 14px;
       color: var(--subtle);
       font-size: 9px;
-      content: "▶";
+      content: '▶';
     }
 
-    &[aria-expanded="true"]::before {
-      content: "▼";
+    &[aria-expanded='true']::before {
+      content: '▼';
     }
 
     &:hover {
@@ -315,13 +491,30 @@ $mobile: 720px;
     }
   }
 
-  .description { margin: 3px 0 0; color: var(--muted); font-size: 11px; line-height: 1.45; }
+  .description {
+    margin: 3px 0 0;
+    color: var(--muted);
+    font-size: 11px;
+    line-height: 1.45;
+  }
 }
 
 .property-control > .schema-field.is-nested {
-  .object-heading { display: none; }
-  .object-properties { margin-top: 4px; padding: 4px 0; background: var(--surface); border: 1px solid var(--border); border-radius: 3px; }
-  .property-row { grid-template-columns: 110px minmax(100px, 1fr) 22px; gap: 8px; padding: 6px 10px; }
+  .object-heading {
+    display: none;
+  }
+  .object-properties {
+    margin-top: 4px;
+    padding: 4px 0;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+  }
+  .property-row {
+    grid-template-columns: 110px minmax(100px, 1fr) 22px;
+    gap: 8px;
+    padding: 6px 10px;
+  }
 }
 
 .form-control {
@@ -333,7 +526,9 @@ $mobile: 720px;
   background: var(--surface);
   border: 1px solid var(--input-border);
   border-radius: 3px;
-  transition: border-color .15s, box-shadow .15s;
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s;
 
   &:focus {
     border-color: var(--accent);
@@ -388,7 +583,9 @@ $mobile: 720px;
   font-size: 12px;
   cursor: pointer;
 
-  span { font-size: 16px; }
+  span {
+    font-size: 16px;
+  }
   select {
     max-width: 440px;
     color: var(--accent);
@@ -409,9 +606,14 @@ $mobile: 720px;
   font-size: 11px;
   cursor: pointer;
 
-  input { position: absolute; opacity: 0;
-    &:checked + span { background: var(--accent);
-      &::after { transform: translateX(11px); }
+  input {
+    position: absolute;
+    opacity: 0;
+    &:checked + span {
+      background: var(--accent);
+      &::after {
+        transform: translateX(11px);
+      }
     }
   }
   span {
@@ -421,7 +623,7 @@ $mobile: 720px;
     padding: 2px;
     background: var(--subtle);
     border-radius: 9px;
-    transition: background .15s;
+    transition: background 0.15s;
 
     &::after {
       display: block;
@@ -430,10 +632,13 @@ $mobile: 720px;
       background: #fff;
       border-radius: 50%;
       content: '';
-      transition: transform .15s;
+      transition: transform 0.15s;
     }
   }
-  b { min-width: 18px; font-weight: 400; }
+  b {
+    min-width: 18px;
+    font-weight: 400;
+  }
 }
 
 .null-indicator {
@@ -470,13 +675,24 @@ $mobile: 720px;
   border-radius: 3px;
   cursor: pointer;
 
-  &:hover { background: color-mix(in srgb, var(--text) 10%, var(--surface-raised)); }
+  &:hover {
+    background: color-mix(in srgb, var(--text) 10%, var(--surface-raised));
+  }
 }
 
 @media (max-width: $mobile) {
-  .property-row { grid-template-columns: 1fr 24px; gap: 6px; }
-  .property-meta { grid-column: 1 / -1; }
-  .variant-picker { grid-template-columns: 1fr; }
-  .property-control > .schema-field.is-nested .property-row { grid-template-columns: 1fr 20px; }
+  .property-row {
+    grid-template-columns: 1fr 24px;
+    gap: 6px;
+  }
+  .property-meta {
+    grid-column: 1 / -1;
+  }
+  .variant-picker {
+    grid-template-columns: 1fr;
+  }
+  .property-control > .schema-field.is-nested .property-row {
+    grid-template-columns: 1fr 20px;
+  }
 }
 </style>
