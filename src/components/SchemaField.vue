@@ -70,8 +70,8 @@ function toggleProperty(key: string) {
 
 function defaultValue(schema: Schema): any {
   const value = resolve(schema)
-  if (Object.hasOwn(value, 'default')) return structuredClone(value.default)
-  if (Object.hasOwn(value, 'const')) return structuredClone(value.const)
+  if (Object.hasOwn(value, 'default')) return JSON.parse(JSON.stringify(value.default))
+  if (Object.hasOwn(value, 'const')) return JSON.parse(JSON.stringify(value.const))
   const options = getOptions(value)
   if (options.length) return options[0].value
   if (value.type === 'boolean') return false
@@ -464,7 +464,6 @@ $mobile: 720px;
   padding: 5px 11px;
   color: var(--text);
   font-size: 12px;
-  line-height: 18px;
   white-space: nowrap;
   background: var(--surface-raised);
   border: 1px solid var(--input-border);

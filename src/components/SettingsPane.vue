@@ -103,6 +103,16 @@ function convertModule(index: number | string) {
   props.config.modules[position] = { type: props.config.modules[position] }
 }
 
+function simplifyModule(index: number | string) {
+  const position = moduleIndex(index)
+  props.config.modules[position] = props.config.modules[position].type
+}
+
+function isModuleSimple(module: Config) {
+  const keys = Object.keys(module)
+  return keys.length === 1 && keys[0] === 'type'
+}
+
 /* ── section helpers ────────────────────────────────────────── */
 
 function setSection(value: unknown) {
@@ -158,17 +168,17 @@ function removeSection() {
           v-for="(module, index) in config.modules ?? []"
           :key="`${typeof module === 'string' ? module : module.type}-${index}`"
           class="module-card"
-          :class="{ collapsed: typeof module !== 'string' && isModuleCollapsed(index) }"
+          :class="{ collapsed: isModuleCollapsed(index) }"
         >
           <header
-            :class="{ 'is-collapsible': typeof module !== 'string' }"
-            :role="typeof module !== 'string' ? 'button' : undefined"
-            :tabindex="typeof module !== 'string' ? 0 : undefined"
-            :aria-expanded="typeof module !== 'string' ? !isModuleCollapsed(index) : undefined"
-            :aria-controls="typeof module !== 'string' ? `module-details-${index}` : undefined"
-            @click="typeof module !== 'string' && toggleModule(index)"
-            @keydown.enter.prevent="typeof module !== 'string' && toggleModule(index)"
-            @keydown.space.prevent="typeof module !== 'string' && toggleModule(index)"
+            class="is-collapsible"
+            role="button"
+            tabindex="0"
+            :aria-expanded="!isModuleCollapsed(index)"
+            :aria-controls="`module-details-${index}`"
+            @click="toggleModule(index)"
+            @keydown.enter.prevent="toggleModule(index)"
+            @keydown.space.prevent="toggleModule(index)"
           >
             <div v-if="typeof module !== 'string'" class="module-toggle">
               <span class="module-index">{{ moduleIndex(index) + 1 }}</span>
@@ -177,34 +187,37 @@ function removeSection() {
             </div>
             <div v-else>
               <span class="module-index">{{ moduleIndex(index) + 1 }}</span>
-              <strong>{{ moduleTitle(module) }}</strong>
-              <code>{{ module }}</code>
+              <strong>{{ module }}</strong>
             </div>
             <div class="module-actions" @click.stop @keydown.stop>
               <button type="button" title="Move up" @click="moveModule(index, -1)">↑</button>
               <button type="button" title="Move down" @click="moveModule(index, 1)">↓</button>
-              <button type="button" title="Remove module" class="danger" @click="removeModule(index)">
-                ×
-              </button>
+              <button type="button" title="Remove module" class="danger" @click="removeModule(index)">×</button>
             </div>
           </header>
-          <div v-if="typeof module === 'string'" class="simple-module">
-            <span>Runs with Fastfetch defaults.</span>
-            <button class="secondary-button" type="button" @click="convertModule(index)">
-              Customize
-            </button>
-          </div>
           <div
-            v-else
             :id="`module-details-${index}`"
             v-show="!isModuleCollapsed(index)"
           >
+            <template v-if="typeof module === 'string'">
+              <div class="simple-module">
+                <span>Runs with Fastfetch defaults.</span>
+                <button class="secondary-button" type="button" @click="convertModule(index)">
+                  Customize
+                </button>
+              </div>
+            </template>
             <SchemaField
+              v-else
               :schema="schemaForModule(module)"
               :root-schema="schema"
               :model-value="module"
               @update:model-value="updateModule(index, $event)"
             />
+            <div v-if="isModuleSimple(module)" class="simplify-hint">
+              <span>No custom settings — </span>
+              <button class="text-button" type="button" @click="simplifyModule(index)">convert to string</button>
+            </div>
           </div>
         </article>
       </template>
@@ -351,17 +364,23 @@ function removeSection() {
   code {
     color: var(--muted);
     font: 11px var(--mono);
+    padding: 1px 6px;
+    border-radius: 3px;
+    background: var(--surface);
+    margin-left: 20px;
   }
 
   > div > :deep(.schema-field) {
-    padding: 0 14px 16px;
+    padding: 16px 14px;
   }
 }
 
 .module-index {
   display: inline-grid;
-  width: 18px;
-  height: 18px;
+  width: 20px;
+  height: 20px;
+  line-height: 0;
+  text-align: center;
   place-items: center;
   color: var(--muted);
   font-size: 10px;
@@ -396,6 +415,28 @@ function removeSection() {
   padding: 14px;
   color: var(--muted);
   font-size: 12px;
+}
+
+.simplify-hint {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 14px 12px;
+  color: var(--subtle);
+  font-size: 11px;
+
+  .text-button {
+    padding: 0;
+    color: var(--accent);
+    font-size: 11px;
+    background: transparent;
+    border: 0;
+    cursor: pointer;
+
+    &:hover {
+      text-decoration: underline;
+    }
+  }
 }
 
 .loading-state {

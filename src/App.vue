@@ -11,8 +11,8 @@ const STORAGE_KEY = 'fastfetch-config-editor-config'
 
 const schemaUrl = 'https://raw.githubusercontent.com/fastfetch-cli/fastfetch/refs/heads/dev/doc/json_schema.json'
 const schema = ref<Record<string, any> | null>(null)
-const config = reactive<Config>(loadSavedConfig())
 const activeSection = ref('general')
+const config = reactive<Config>(loadSavedConfig())
 const search = ref('')
 const sidebarCollapsed = ref(false)
 const previewCollapsed = ref(false)
@@ -33,21 +33,25 @@ function loadSavedConfig(): Config {
   try {
     const saved = localStorage.getItem(STORAGE_KEY)
     if (saved) {
-      const parsed = JSON.parse(saved)
-      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
-        if (!parsed.$schema) parsed.$schema = schemaUrl
-        return parsed
+      const blob = JSON.parse(saved)
+      if (blob && typeof blob === 'object' && 'config' in blob) {
+        if (blob.activeSection) activeSection.value = blob.activeSection
+        const parsed = blob.config
+        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+          if (!parsed.$schema) parsed.$schema = schemaUrl
+          return parsed
+        }
       }
     }
   } catch { /* ignore corrupt data */ }
   return { $schema: schemaUrl }
 }
 
-function saveConfig() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(config))
+function persistState() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify({ config, activeSection: activeSection.value }))
 }
 
-watch(config, saveConfig, { deep: true })
+watch([config, activeSection], persistState, { deep: true })
 
 function importConfig() {
   fileInput.value?.click()
@@ -75,7 +79,37 @@ async function readConfig(event: Event) {
 function newConfig() {
   Object.keys(config).forEach((key) => delete config[key])
   config.$schema = schemaUrl
-  localStorage.removeItem(STORAGE_KEY)
+  config.modules = [
+    "title",
+    "separator",
+    "os",
+    "host",
+    "kernel",
+    "uptime",
+    "packages",
+    "shell",
+    "display",
+    "de",
+    "wm",
+    "wmtheme",
+    "theme",
+    "icons",
+    "font",
+    "cursor",
+    "terminal",
+    "terminalfont",
+    "cpu",
+    "gpu",
+    "memory",
+    "swap",
+    "disk",
+    "localip",
+    "battery",
+    "poweradapter",
+    "locale",
+    "break",
+    "colors"
+  ]
   error.value = ''
   status.value = 'Started a new configuration'
 }
