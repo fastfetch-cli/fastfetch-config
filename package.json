@@ -10,12 +10,14 @@
   },
   "dependencies": {
     "jsonc-parser": "^3.3.1",
+    "marked": "^18.0.7",
     "vue": "^3.5.40"
   },
   "devDependencies": {
     "@types/node": "^24.13.3",
     "@vitejs/plugin-vue": "^6.0.8",
     "@vue/tsconfig": "^0.9.1",
+    "sass": "^1.102.0",
     "typescript": "~6.0.3",
     "vite": "^8.1.5",
     "vue-tsc": "^3.3.8"
