@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { parse, printParseErrorCode, type ParseError } from 'jsonc-parser'
 import SidebarPanel from './components/SidebarPanel.vue'
 import SettingsPane from './components/SettingsPane.vue'
@@ -7,9 +7,11 @@ import PreviewPane from './components/PreviewPane.vue'
 
 type Config = Record<string, any>
 
+const STORAGE_KEY = 'fastfetch-config-editor-config'
+
 const schemaUrl = 'https://raw.githubusercontent.com/fastfetch-cli/fastfetch/refs/heads/dev/doc/json_schema.json'
 const schema = ref<Record<string, any> | null>(null)
-const config = reactive<Config>({ $schema: schemaUrl })
+const config = reactive<Config>(loadSavedConfig())
 const activeSection = ref('general')
 const search = ref('')
 const sidebarCollapsed = ref(false)
@@ -26,6 +28,26 @@ const sections = [
 ]
 
 const preview = computed(() => JSON.stringify(config, null, 2))
+
+function loadSavedConfig(): Config {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY)
+    if (saved) {
+      const parsed = JSON.parse(saved)
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+        if (!parsed.$schema) parsed.$schema = schemaUrl
+        return parsed
+      }
+    }
+  } catch { /* ignore corrupt data */ }
+  return { $schema: schemaUrl }
+}
+
+function saveConfig() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(config))
+}
+
+watch(config, saveConfig, { deep: true })
 
 function importConfig() {
   fileInput.value?.click()
@@ -53,6 +75,7 @@ async function readConfig(event: Event) {
 function newConfig() {
   Object.keys(config).forEach((key) => delete config[key])
   config.$schema = schemaUrl
+  localStorage.removeItem(STORAGE_KEY)
   error.value = ''
   status.value = 'Started a new configuration'
 }
