@@ -8,6 +8,7 @@
     "build": "vue-tsc -b && vite build",
     "preview": "vite preview"
   },
+  "packageManager": "pnpm@11.18.0",
   "dependencies": {
     "jsonc-parser": "^3.3.1",
     "marked": "^18.0.7",

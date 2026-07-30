@@ -1,5 +1,8 @@
 # Fastfetch Config Editor
 
+[![GitHub Pages](https://img.shields.io/badge/GitHub%20Pages-live-blue?logo=github&style=flat-square)](https://fastfetch-cli.github.io/fastfetch-config/)
+[![CI Status](https://img.shields.io/github/actions/workflow/status/fastfetch-cli/fastfetch-config/deploy.yml?style=flat-square&logo=githubactions&logoColor=white&label=CI)](https://github.com/fastfetch-cli/fastfetch-config/actions/workflows/deploy.yml)
+
 A visual configuration editor for [Fastfetch](https://github.com/fastfetch-cli/fastfetch) — inspect, tweak, and generate `config.jsonc` through a graphical interface without writing a single line of JSON by hand.
 
 ## Disclaimer

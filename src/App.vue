@@ -177,7 +177,7 @@ onMounted(async () => {
         @toggle-collapse="sidebarCollapsed = !sidebarCollapsed"
       />
       <SettingsPane
-        :schema="schema"
+        :schema="schema!"
         :config="config"
         :active-section="activeSection"
         :sections="sections"
