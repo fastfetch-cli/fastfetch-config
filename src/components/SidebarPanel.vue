@@ -6,11 +6,13 @@ const props = defineProps<{
   search: string
   sections: { id: string; label: string; icon: string }[]
   schemaUrl: string
+  collapsed: boolean
 }>()
 
 const emit = defineEmits<{
   'update:activeSection': [id: string]
   'update:search': [value: string]
+  'toggleCollapse': []
 }>()
 
 const searchModel = computed({
@@ -20,11 +22,17 @@ const searchModel = computed({
 </script>
 
 <template>
-  <aside class="sidebar">
-    <div class="search-box">
+  <aside class="sidebar" :class="{ collapsed }">
+    <div v-if="!collapsed" class="search-box">
       <span>⌕</span>
       <input v-model="searchModel" type="search" placeholder="Search settings" />
     </div>
+    <button
+      class="collapse-toggle"
+      type="button"
+      :title="collapsed ? 'Expand sidebar' : 'Collapse sidebar'"
+      @click="emit('toggleCollapse')"
+    >{{ collapsed ? '▸' : '◂' }}</button>
     <nav aria-label="Settings sections">
       <button
         v-for="section in sections"
@@ -32,12 +40,14 @@ const searchModel = computed({
         class="nav-item"
         :class="{ active: activeSection === section.id }"
         type="button"
+        :title="collapsed ? section.label : undefined"
         @click="emit('update:activeSection', section.id)"
       >
-        <span>{{ section.icon }}</span>{{ section.label }}
+        <span>{{ section.icon }}</span>
+        <span v-if="!collapsed" class="nav-label">{{ section.label }}</span>
       </button>
     </nav>
-    <p class="source-note">
+    <p v-if="!collapsed" class="source-note">
       Schema source<br />
       <a :href="schemaUrl" target="_blank" rel="noreferrer">fastfetch-cli/fastfetch</a>
     </p>
@@ -46,15 +56,45 @@ const searchModel = computed({
 
 <style scoped lang="scss">
 .sidebar {
-  min-height: 0;
+  display: flex;
+  flex-direction: column;
   padding: 16px 10px;
   overflow-y: auto;
   background: var(--sidebar);
   border-right: 1px solid var(--border);
 
+  &.collapsed {
+    padding: 16px 4px;
+    align-items: center;
+
+    nav { width: 100%; }
+  }
+
   nav {
     display: grid;
     gap: 2px;
+  }
+}
+
+.collapse-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 24px;
+  margin-bottom: 8px;
+  padding: 0;
+  color: var(--subtle);
+  font-size: 14px;
+  line-height: 1;
+  background: transparent;
+  border: 0;
+  border-radius: 3px;
+  cursor: pointer;
+
+  &:hover {
+    color: var(--text);
+    background: color-mix(in srgb, var(--text) 8%, transparent);
   }
 }
 
@@ -94,6 +134,11 @@ const searchModel = computed({
   border: 0;
   border-radius: 4px;
 
+  .sidebar.collapsed & {
+    justify-content: center;
+    padding: 4px 0;
+  }
+
   &:hover {
     background: color-mix(in srgb, var(--text) 8%, transparent);
   }
@@ -106,7 +151,12 @@ const searchModel = computed({
     width: 16px;
     color: var(--muted);
     text-align: center;
+    flex-shrink: 0;
   }
+}
+
+.nav-label {
+  width: auto !important;
 }
 
 .source-note {

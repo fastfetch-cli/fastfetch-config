@@ -12,6 +12,8 @@ const schema = ref<Record<string, any> | null>(null)
 const config = reactive<Config>({ $schema: schemaUrl })
 const activeSection = ref('general')
 const search = ref('')
+const sidebarCollapsed = ref(false)
+const previewCollapsed = ref(false)
 const status = ref('Loading the latest Fastfetch schema…')
 const error = ref('')
 const fileInput = ref<HTMLInputElement | null>(null)
@@ -95,18 +97,27 @@ onMounted(async () => {
         <button class="secondary-button" type="button" @click="newConfig">New</button>
         <button class="secondary-button" type="button" @click="importConfig">Import JSONC</button>
         <button class="primary-button" type="button" @click="downloadConfig">Download config.jsonc</button>
+        <button
+          v-if="previewCollapsed"
+          class="secondary-button"
+          type="button"
+          title="Show preview"
+          @click="previewCollapsed = false"
+        >◀ JSON</button>
         <input ref="fileInput" class="sr-only" type="file" accept=".json,.jsonc,application/json" @change="readConfig" />
       </div>
     </header>
 
-    <div class="workspace">
+    <div class="workspace" :class="{ 'sidebar-collapsed': sidebarCollapsed, 'preview-collapsed': previewCollapsed }">
       <SidebarPanel
         :active-section="activeSection"
         :search="search"
         :sections="sections"
         :schema-url="schemaUrl"
+        :collapsed="sidebarCollapsed"
         @update:active-section="activeSection = $event"
         @update:search="search = $event"
+        @toggle-collapse="sidebarCollapsed = !sidebarCollapsed"
       />
       <SettingsPane
         :schema="schema"
@@ -120,9 +131,11 @@ onMounted(async () => {
         @remove:config-section="onRemoveConfigSection"
       />
       <PreviewPane
+        v-show="!previewCollapsed"
         :config-json="preview"
         :error="error"
         :status="status"
+        @toggle-collapse="previewCollapsed = !previewCollapsed"
       />
     </div>
   </main>
@@ -142,11 +155,18 @@ $mobile: 720px;
 .brand { display: flex; align-items: center; gap: 10px; font-size: 14px; font-weight: 600; white-space: nowrap;
   &-mark { color: var(--accent); font: 700 20px/1 var(--mono); letter-spacing: -4px; }
 }
-.workspace { flex: 1; display: grid; grid-template-columns: 238px minmax(450px, 1fr) minmax(320px, .75fr); min-height: 0; overflow: hidden; }
+.workspace { flex: 1; display: grid; grid-template-columns: 238px minmax(450px, 1fr) minmax(320px, .75fr); min-height: 0; overflow: hidden; transition: grid-template-columns .2s; }
+.workspace.sidebar-collapsed { grid-template-columns: 52px minmax(450px, 1fr) minmax(320px, .75fr); }
+.workspace.preview-collapsed { grid-template-columns: 238px 1fr; }
+.workspace.sidebar-collapsed.preview-collapsed { grid-template-columns: 52px 1fr; }
+
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; }
 
 @media (max-width: $tablet) {
   .workspace { grid-template-columns: 208px minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) 330px; }
+  .workspace.sidebar-collapsed { grid-template-columns: 52px minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) 330px; }
+  .workspace.preview-collapsed { grid-template-columns: 208px 1fr; grid-template-rows: minmax(0, 1fr); }
+  .workspace.sidebar-collapsed.preview-collapsed { grid-template-columns: 52px 1fr; }
 }
 @media (max-width: $mobile) {
   .topbar { flex-direction: column; align-items: flex-start; height: auto; min-height: 54px; padding: 10px 14px;
@@ -155,5 +175,6 @@ $mobile: 720px;
     }
   }
   .workspace { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr) 280px; min-height: 0; }
+  .workspace.preview-collapsed { grid-template-columns: 1fr; grid-template-rows: auto minmax(0, 1fr); }
 }
 </style>

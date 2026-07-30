@@ -7,6 +7,10 @@ const props = defineProps<{
   status: string
 }>()
 
+const emit = defineEmits<{
+  'toggleCollapse': []
+}>()
+
 const highlightedPreviewLines = computed(() =>
   props.configJson
     .split('\n')
@@ -52,7 +56,10 @@ function highlightJsonc(line: string) {
   <aside class="preview-pane">
     <div class="preview-heading">
       <span>JSON PREVIEW</span>
-      <span class="saved-dot">● {{ error ? 'Error' : 'Ready' }}</span>
+      <div class="preview-heading-actions">
+        <span class="saved-dot">● {{ error ? 'Error' : 'Ready' }}</span>
+        <button class="preview-toggle" type="button" title="Close preview" @click="emit('toggleCollapse')">×</button>
+      </div>
     </div>
     <ol class="code-preview" aria-label="Generated config.jsonc preview">
       <li v-for="(line, index) in highlightedPreviewLines" :key="index">
@@ -91,6 +98,33 @@ function highlightJsonc(line: string) {
   color: var(--text);
   font: 12px var(--mono);
   border-bottom: 1px solid var(--border);
+}
+
+.preview-heading-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.preview-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  color: var(--subtle);
+  font-size: 16px;
+  line-height: 1;
+  background: transparent;
+  border: 0;
+  border-radius: 3px;
+  cursor: pointer;
+
+  &:hover {
+    color: var(--text);
+    background: color-mix(in srgb, var(--text) 10%, transparent);
+  }
 }
 
 .saved-dot {

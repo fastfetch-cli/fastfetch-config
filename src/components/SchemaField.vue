@@ -22,7 +22,7 @@ const enumOptions = computed(() => getOptions(resolved.value))
 const collapsed = ref(false)
 const collapsedProperties = ref(new Set<string>())
 const variantOptions = computed(() => (resolved.value.oneOf ?? resolved.value.anyOf ?? [])
-  .filter((branch: Schema) => !Object.hasOwn(branch, 'const')))
+  .filter((branch: Schema) => !Object.hasOwn(branch, 'const') || branch.const === null))
 const selectedVariant = computed(() => {
   const index = variantOptions.value.findIndex((branch) => matchesValue(resolve(branch), props.modelValue))
   return index < 0 ? 0 : index
@@ -41,7 +41,7 @@ function getOptions(schema: Schema) {
   const branches = schema.oneOf ?? schema.anyOf
   if (!branches) return []
   return branches
-    .filter((branch: Schema) => Object.hasOwn(branch, 'const'))
+    .filter((branch: Schema) => Object.hasOwn(branch, 'const') && branch.const !== null)
     .map((branch: Schema) => ({ value: branch.const, label: branch.description ?? String(branch.const) }))
 }
 
@@ -71,9 +71,11 @@ function toggleProperty(key: string) {
 function defaultValue(schema: Schema): any {
   const value = resolve(schema)
   if (Object.hasOwn(value, 'default')) return structuredClone(value.default)
+  if (Object.hasOwn(value, 'const')) return structuredClone(value.const)
   const options = getOptions(value)
   if (options.length) return options[0].value
   if (value.type === 'boolean') return false
+  if (value.type === 'null') return null
   if (value.type === 'number' || value.type === 'integer') return value.minimum ?? 0
   if (value.type === 'array') return []
   if (value.type === 'object' || value.properties) return {}
@@ -217,6 +219,8 @@ function addArrayItem() {
       <span aria-hidden="true"></span>
       <b>{{ modelValue ? 'On' : 'Off' }}</b>
     </label>
+
+    <span v-else-if="resolved.type === 'null' || resolved.const === null" class="null-indicator">null</span>
 
     <input
       v-else
@@ -430,6 +434,18 @@ $mobile: 720px;
     }
   }
   b { min-width: 18px; font-weight: 400; }
+}
+
+.null-indicator {
+  display: inline-block;
+  padding: 2px 8px;
+  color: var(--subtle);
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 500;
+  background: var(--surface);
+  border: 1px dashed var(--border);
+  border-radius: 3px;
 }
 
 .array-editor {
