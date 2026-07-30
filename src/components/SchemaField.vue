@@ -27,8 +27,8 @@ const selectedVariant = computed(() => {
   const index = variantOptions.value.findIndex((branch) => matchesValue(resolve(branch), props.modelValue))
   return index < 0 ? 0 : index
 })
-const visibleProperties = computed(() => Object.entries(resolved.value.properties ?? {}).filter(([key]) => key in (props.modelValue ?? {})))
-const availableProperties = computed(() => Object.entries(resolved.value.properties ?? {}).filter(([key]) => !(key in (props.modelValue ?? {}))))
+const visibleProperties = computed(() => (Object.entries(resolved.value.properties ?? {}) as [string, Schema][]).filter(([key]) => key in (props.modelValue ?? {})))
+const availableProperties = computed(() => (Object.entries(resolved.value.properties ?? {}) as [string, Schema][]).filter(([key]) => !(key in (props.modelValue ?? {}))))
 
 function resolve(schema: Schema): Schema {
   if (!schema?.$ref) return schema ?? {}
@@ -194,7 +194,7 @@ function addArrayItem() {
 
     <template v-else-if="isArray">
       <div class="array-editor">
-        <div v-for="(item, index) in (modelValue ?? [])" :key="index" class="array-item">
+        <div v-for="(item, index) in (modelValue as any[] ?? [])" :key="index" class="array-item">
           <SchemaField
             :schema="resolved.items ?? {}"
             :root-schema="rootSchema"
