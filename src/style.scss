@@ -57,6 +57,13 @@ body {
   background: var(--canvas);
 }
 
+html,
+body,
+#app {
+  height: 100%;
+  overflow: hidden;
+}
+
 button,
 input,
 select {

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import SchemaField from './SchemaField.vue'
 import MarkdownDescription from './MarkdownDescription.vue'
 
@@ -12,8 +12,6 @@ const props = defineProps<{
   activeSection: string
   sections: { id: string; label: string; icon: string }[]
   search: string
-  error: string
-  status: string
 }>()
 
 const emit = defineEmits<{
@@ -23,15 +21,28 @@ const emit = defineEmits<{
 
 /* ── derived schema ─────────────────────────────────────────── */
 
-const sectionSchema = computed(() => props.schema?.properties?.[props.activeSection] ?? {})
+const sectionSchema = computed(() => props.schema.properties?.[props.activeSection] ?? {})
 
 /* ── module management ──────────────────────────────────────── */
 
 const selectedModuleType = ref('title')
 const collapsedModules = ref(new Set<number>())
+const accordionMode = ref(false)
+
+watch(accordionMode, (val) => {
+  const modules = props.config.modules
+  if (!modules?.length) return
+  const next = new Set<number>()
+  if (val) {
+    // 开启手风琴 → 全部收起
+    for (let i = 0; i < modules.length; i++) next.add(i)
+  }
+  // 关闭手风琴 → 全部展开 (Set 为空)
+  collapsedModules.value = next
+})
 
 const moduleOptions = computed<Schema[]>(() => {
-  const itemSchema = props.schema?.properties?.modules?.items
+  const itemSchema = props.schema.properties?.modules?.items
   const objectChoice = itemSchema?.anyOf?.find((choice: Schema) => choice.type === 'object')
   return objectChoice?.oneOf ?? []
 })
@@ -65,47 +76,47 @@ function addModule() {
   props.config.modules.push({ type: selectedModuleType.value })
 }
 
-function moduleIndex(index: number | string) {
-  return Number(index)
+function isModuleCollapsed(index: number) {
+  return collapsedModules.value.has(index)
 }
 
-function isModuleCollapsed(index: number | string) {
-  return collapsedModules.value.has(moduleIndex(index))
-}
-
-function toggleModule(index: number | string) {
-  const position = moduleIndex(index)
+function toggleModule(index: number) {
   const next = new Set(collapsedModules.value)
-  if (next.has(position)) next.delete(position)
-  else next.add(position)
+  if (next.has(index)) {
+    next.delete(index)
+    if (accordionMode.value) {
+      const modules = props.config.modules ?? []
+      for (let i = 0; i < modules.length; i++) {
+        if (i !== index) next.add(i)
+      }
+    }
+  } else {
+    next.add(index)
+  }
   collapsedModules.value = next
 }
 
-function updateModule(index: number | string, value: Config) {
-  const position = moduleIndex(index)
-  props.config.modules[position] = { type: props.config.modules[position].type, ...value }
+function updateModule(index: number, value: Config) {
+  props.config.modules[index] = { type: props.config.modules[index].type, ...value }
 }
 
-function removeModule(index: number | string) {
-  props.config.modules.splice(moduleIndex(index), 1)
+function removeModule(index: number) {
+  props.config.modules.splice(index, 1)
 }
 
-function moveModule(index: number | string, direction: number) {
-  const position = moduleIndex(index)
-  const destination = position + direction
+function moveModule(index: number, direction: number) {
+  const destination = index + direction
   if (destination < 0 || destination >= props.config.modules.length) return
-  const [mod] = props.config.modules.splice(position, 1)
+  const [mod] = props.config.modules.splice(index, 1)
   props.config.modules.splice(destination, 0, mod)
 }
 
-function convertModule(index: number | string) {
-  const position = moduleIndex(index)
-  props.config.modules[position] = { type: props.config.modules[position] }
+function convertModule(index: number) {
+  props.config.modules[index] = { type: props.config.modules[index] }
 }
 
-function simplifyModule(index: number | string) {
-  const position = moduleIndex(index)
-  props.config.modules[position] = props.config.modules[position].type
+function simplifyModule(index: number) {
+  props.config.modules[index] = props.config.modules[index].type
 }
 
 function isModuleSimple(module: Config) {
@@ -126,128 +137,127 @@ function removeSection() {
 
 <template>
   <section class="settings-pane">
-    <template v-if="schema">
-      <div class="pane-heading">
-        <div>
-          <p class="eyebrow">FASTFETCH CONFIGURATION</p>
-          <h1>{{ sections.find((item) => item.id === activeSection)?.label }}</h1>
-          <div class="section-description">
-            <MarkdownDescription
-              v-if="sectionSchema.description"
-              :source="sectionSchema.description"
-            />
-          </div>
+    <div class="pane-heading">
+      <div>
+        <p class="eyebrow">FASTFETCH CONFIGURATION</p>
+        <h1>{{ sections.find((item) => item.id === activeSection)?.label }}</h1>
+        <div class="section-description">
+          <MarkdownDescription
+            v-if="sectionSchema.description"
+            :source="sectionSchema.description"
+          />
         </div>
-        <button
-          v-if="config[activeSection] !== undefined && activeSection !== 'modules'"
-          class="text-button danger"
-          type="button"
-          @click="removeSection"
-        >
-          Reset section
-        </button>
       </div>
-
-      <template v-if="activeSection === 'modules'">
-        <div class="module-toolbar">
-          <select v-model="selectedModuleType" class="form-control">
-            <option
-              v-for="option in filteredModuleOptions"
-              :key="option.properties?.type?.const"
-              :value="option.properties?.type?.const"
-            >
-              {{ option.title }}
-            </option>
-          </select>
-          <button class="primary-button" type="button" @click="addModule">Add module</button>
-        </div>
-        <p v-if="!config.modules?.length" class="empty-state">
-          Choose a module to start composing the output order.
-        </p>
-        <article
-          v-for="(module, index) in config.modules ?? []"
-          :key="`${typeof module === 'string' ? module : module.type}-${index}`"
-          class="module-card"
-          :class="{ collapsed: isModuleCollapsed(index) }"
-        >
-          <header
-            class="is-collapsible"
-            role="button"
-            tabindex="0"
-            :aria-expanded="!isModuleCollapsed(index)"
-            :aria-controls="`module-details-${index}`"
-            @click="toggleModule(index)"
-            @keydown.enter.prevent="toggleModule(index)"
-            @keydown.space.prevent="toggleModule(index)"
-          >
-            <div v-if="typeof module !== 'string'" class="module-toggle">
-              <span class="module-index">{{ moduleIndex(index) + 1 }}</span>
-              <strong>{{ moduleTitle(module) }}</strong>
-              <code>{{ module.type }}</code>
-            </div>
-            <div v-else>
-              <span class="module-index">{{ moduleIndex(index) + 1 }}</span>
-              <strong>{{ module }}</strong>
-            </div>
-            <div class="module-actions" @click.stop @keydown.stop>
-              <button type="button" title="Move up" @click="moveModule(index, -1)">↑</button>
-              <button type="button" title="Move down" @click="moveModule(index, 1)">↓</button>
-              <button type="button" title="Remove module" class="danger" @click="removeModule(index)">×</button>
-            </div>
-          </header>
-          <div
-            :id="`module-details-${index}`"
-            v-show="!isModuleCollapsed(index)"
-          >
-            <template v-if="typeof module === 'string'">
-              <div class="simple-module">
-                <span>Runs with Fastfetch defaults.</span>
-                <button class="secondary-button" type="button" @click="convertModule(index)">
-                  Customize
-                </button>
-              </div>
-            </template>
-            <SchemaField
-              v-else
-              :schema="schemaForModule(module)"
-              :root-schema="schema"
-              :model-value="module"
-              @update:model-value="updateModule(index, $event)"
-            />
-            <div v-if="isModuleSimple(module)" class="simplify-hint">
-              <span>No custom settings — </span>
-              <button class="text-button" type="button" @click="simplifyModule(index)">convert to string</button>
-            </div>
-          </div>
-        </article>
-      </template>
-
-      <template v-else>
-        <p v-if="config[activeSection] === undefined" class="empty-state">
-          This section is not configured yet. Add it to expose its available settings.
-        </p>
-        <button
-          v-if="config[activeSection] === undefined"
-          class="primary-button"
-          type="button"
-          @click="setSection({})"
-        >
-          Add {{ sections.find((item) => item.id === activeSection)?.label }} section
-        </button>
-        <SchemaField
-          v-else
-          :schema="sectionSchema"
-          :root-schema="schema"
-          :model-value="config[activeSection]"
-          :label="sections.find((item) => item.id === activeSection)?.label"
-          @update:model-value="setSection"
-        />
-      </template>
-    </template>
-    <div v-else class="loading-state">
-      <span class="spinner"></span>
-      <p>{{ error || status }}</p>
+      <button
+        v-if="config[activeSection] !== undefined && activeSection !== 'modules'"
+        class="text-button danger"
+        type="button"
+        @click="removeSection"
+      >
+        Reset section
+      </button>
     </div>
+
+    <template v-if="activeSection === 'modules'">
+      <div class="module-toolbar">
+        <select v-model="selectedModuleType" class="form-control">
+          <option
+            v-for="option in filteredModuleOptions"
+            :key="option.properties?.type?.const"
+            :value="option.properties?.type?.const"
+          >
+            {{ option.title }}
+          </option>
+        </select>
+        <button class="primary-button" type="button" @click="addModule">Add module</button>
+        <label class="accordion-toggle">
+          <input type="checkbox" v-model="accordionMode" />
+          <span class="toggle-track"><span class="toggle-thumb"></span></span>
+          Accordion
+        </label>
+      </div>
+      <p v-if="!config.modules?.length" class="empty-state">
+        Choose a module to start composing the output order.
+      </p>
+      <article
+        v-for="(module, index) in (config.modules as any[]) ?? []"
+        :key="`${typeof module === 'string' ? module : module.type}-${index}`"
+        class="module-card"
+        :class="{ collapsed: isModuleCollapsed(index) }"
+      >
+        <header
+          class="is-collapsible"
+          role="button"
+          tabindex="0"
+          :aria-expanded="!isModuleCollapsed(index)"
+          :aria-controls="`module-details-${index}`"
+          @click="toggleModule(index)"
+          @keydown.enter.prevent="toggleModule(index)"
+          @keydown.space.prevent="toggleModule(index)"
+        >
+          <div v-if="typeof module !== 'string'" class="module-toggle">
+            <span class="module-index">{{ index + 1 }}</span>
+            <strong>{{ moduleTitle(module) }}</strong>
+            <code>{{ module.type }}</code>
+          </div>
+          <div v-else>
+            <span class="module-index">{{ index + 1 }}</span>
+            <strong>{{ module }}</strong>
+          </div>
+          <div class="module-actions" @click.stop @keydown.stop>
+            <button type="button" title="Move up" @click="moveModule(index, -1)">↑</button>
+            <button type="button" title="Move down" @click="moveModule(index, 1)">↓</button>
+            <button type="button" title="Remove module" class="danger" @click="removeModule(index)">×</button>
+          </div>
+        </header>
+        <div
+          :id="`module-details-${index}`"
+          v-show="!isModuleCollapsed(index)"
+        >
+          <template v-if="typeof module === 'string'">
+            <div class="simple-module">
+              <span>Runs with Fastfetch defaults.</span>
+              <button class="secondary-button" type="button" @click="convertModule(index)">
+                Customize
+              </button>
+            </div>
+          </template>
+          <SchemaField
+            v-else
+            :schema="schemaForModule(module)"
+            :root-schema="schema"
+            :model-value="module"
+            @update:model-value="updateModule(index, $event)"
+          />
+          <div v-if="isModuleSimple(module)" class="simplify-hint">
+            <span>No custom settings — </span>
+            <button class="text-button" type="button" @click="simplifyModule(index)">convert to string</button>
+          </div>
+        </div>
+      </article>
+    </template>
+
+    <template v-else>
+      <p v-if="config[activeSection] === undefined" class="empty-state">
+        This section is not configured yet. Add it to expose its available settings.
+      </p>
+      <button
+        v-if="config[activeSection] === undefined"
+        class="primary-button"
+        type="button"
+        @click="setSection({})"
+      >
+        Add {{ sections.find((item) => item.id === activeSection)?.label }} section
+      </button>
+      <SchemaField
+        v-else
+        :schema="sectionSchema"
+        :root-schema="schema"
+        :model-value="config[activeSection]"
+        :label="sections.find((item) => item.id === activeSection)?.label"
+        @update:model-value="setSection"
+      />
+    </template>
   </section>
 </template>
 
@@ -300,11 +310,60 @@ function removeSection() {
 .module-toolbar {
   display: flex;
   gap: 8px;
-  max-width: 480px;
   margin: 8px 0 18px;
+  align-items: center;
 
   :deep(.form-control) {
-    width: 100%;
+    flex: 1;
+    max-width: 300px;
+  }
+}
+
+.accordion-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  margin-left: auto;
+  color: var(--muted);
+  font-size: 12px;
+  cursor: pointer;
+  user-select: none;
+
+  input {
+    position: absolute;
+    width: 0;
+    height: 0;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .toggle-track {
+    position: relative;
+    width: 32px;
+    height: 18px;
+    background: var(--input-border, #bbb);
+    border-radius: 9px;
+    transition: background 0.2s;
+  }
+
+  .toggle-thumb {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 14px;
+    height: 14px;
+    background: #fff;
+    border-radius: 50%;
+    transition: transform 0.2s;
+  }
+
+  input:checked + .toggle-track {
+    background: var(--accent);
+  }
+
+  input:checked + .toggle-track .toggle-thumb {
+    transform: translateX(14px);
   }
 }
 
@@ -439,21 +498,6 @@ function removeSection() {
   }
 }
 
-.loading-state {
-  display: grid;
-  min-height: 260px;
-  place-content: center;
-  gap: 10px;
-  color: var(--muted);
-  font-size: 13px;
-  text-align: center;
-
-  p {
-    max-width: 380px;
-    margin: 0;
-  }
-}
-
 .spinner {
   width: 22px;
   height: 22px;
@@ -473,10 +517,6 @@ function removeSection() {
 @media (max-width: 720px) {
   .pane-heading {
     flex-direction: column;
-  }
-
-  .module-toolbar {
-    max-width: none;
   }
 
   .settings-pane {
